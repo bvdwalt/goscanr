@@ -21,12 +21,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Scanning %s from port %d to %d...\n", *target, *startPort, *endPort)
+	ips, err := net.LookupHost(*target)
+	if err != nil {
+		fmt.Printf("Failed to resolve %s: %v\n", *target, err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Scanning %s (%v) from port %d to %d...\n", *target, ips, *startPort, *endPort)
 
 	var wg sync.WaitGroup
-	for port := *startPort; port <= *endPort; port++ {
-		wg.Add(1)
-		go scanPort(*target, port, *timeout, &wg)
+	for _, targetIP := range ips {
+		for port := *startPort; port <= *endPort; port++ {
+			wg.Add(1)
+			go scanPort(targetIP, port, *timeout, &wg)
+		}
 	}
 	wg.Wait()
 	fmt.Println("Scan complete.")
@@ -35,7 +43,7 @@ func main() {
 func scanPort(target string, port int, timeout int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	address := fmt.Sprintf("%s:%d", target, port)
+	address := net.JoinHostPort(target, fmt.Sprintf("%d", port))
 	conn, err := net.DialTimeout("tcp", address, time.Millisecond*time.Duration(timeout))
 	if err != nil {
 		return
