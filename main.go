@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -14,6 +15,7 @@ func main() {
 	startPort := flag.Int("start", 1, "Start port")
 	endPort := flag.Int("end", 1024, "End port")
 	timeout := flag.Int("timeout", 300, "Timeout in milliseconds")
+	concurrency := flag.Int("concurrency", 1000, "Maximum number of concurrent port scans")
 	flag.Parse()
 
 	if *target == "" {
@@ -28,19 +30,42 @@ func main() {
 	}
 
 	fmt.Printf("Scanning %s (%v) from port %d to %d...\n", *target, ips, *startPort, *endPort)
+	start := time.Now()
 
+	openPorts := make(chan int)
+	sem := make(chan struct{}, *concurrency)
 	var wg sync.WaitGroup
 	for _, targetIP := range ips {
 		for port := *startPort; port <= *endPort; port++ {
 			wg.Add(1)
-			go scanPort(targetIP, port, *timeout, &wg)
+			sem <- struct{}{}
+			go func(ip string, p int) {
+				defer func() { <-sem }()
+				scanPort(ip, p, *timeout, &wg, openPorts)
+			}(targetIP, port)
 		}
 	}
-	wg.Wait()
-	fmt.Println("Scan complete.")
+
+	go func() {
+		wg.Wait()
+		close(openPorts)
+	}()
+
+	var found []int
+	for port := range openPorts {
+		found = append(found, port)
+	}
+
+	sort.Ints(found)
+	for _, port := range found {
+		fmt.Printf("Port %d is open\n", port)
+	}
+
+	fmt.Println("Duration:", time.Since(start))
+	fmt.Println("Scan complete")
 }
 
-func scanPort(target string, port int, timeout int, wg *sync.WaitGroup) {
+func scanPort(target string, port int, timeout int, wg *sync.WaitGroup, openPorts chan int) {
 	defer wg.Done()
 
 	address := net.JoinHostPort(target, fmt.Sprintf("%d", port))
@@ -49,5 +74,5 @@ func scanPort(target string, port int, timeout int, wg *sync.WaitGroup) {
 		return
 	}
 	defer conn.Close()
-	fmt.Printf("Port %d is open\n", port)
+	openPorts <- port
 }
