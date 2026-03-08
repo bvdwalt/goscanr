@@ -3,12 +3,18 @@ package scanner
 import (
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
-func Scan(ips []string, startPort, endPort int, timeout time.Duration, concurrency int) []int {
-	openPorts := make(chan int)
+type ScanResult struct {
+	Port   int
+	Banner string
+}
+
+func Scan(ips []string, startPort, endPort int, timeout time.Duration, concurrency int) []ScanResult {
+	results := make(chan ScanResult)
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 
@@ -18,24 +24,24 @@ func Scan(ips []string, startPort, endPort int, timeout time.Duration, concurren
 			sem <- struct{}{}
 			go func(ip string, p int) {
 				defer func() { <-sem }()
-				scanPort(ip, p, timeout, &wg, openPorts)
+				scanPort(ip, p, timeout, &wg, results)
 			}(ip, port)
 		}
 	}
 
 	go func() {
 		wg.Wait()
-		close(openPorts)
+		close(results)
 	}()
 
-	var found []int
-	for port := range openPorts {
-		found = append(found, port)
+	var found []ScanResult
+	for r := range results {
+		found = append(found, r)
 	}
 	return found
 }
 
-func scanPort(ip string, port int, timeout time.Duration, wg *sync.WaitGroup, openPorts chan int) {
+func scanPort(ip string, port int, timeout time.Duration, wg *sync.WaitGroup, results chan ScanResult) {
 	defer wg.Done()
 
 	address := net.JoinHostPort(ip, strconv.Itoa(port))
@@ -44,5 +50,16 @@ func scanPort(ip string, port int, timeout time.Duration, wg *sync.WaitGroup, op
 		return
 	}
 	defer conn.Close()
-	openPorts <- port
+
+	banner := grabBanner(conn)
+	results <- ScanResult{Port: port, Banner: banner}
+}
+
+const bannerTimeout = 100 * time.Millisecond
+
+func grabBanner(conn net.Conn) string {
+	conn.SetReadDeadline(time.Now().Add(bannerTimeout))
+	buf := make([]byte, 1024)
+	n, _ := conn.Read(buf)
+	return strings.TrimSpace(string(buf[:n]))
 }

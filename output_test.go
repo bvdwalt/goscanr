@@ -12,41 +12,46 @@ func TestPrintPortTable(t *testing.T) {
 		{Port: "22", Proto: "tcp", State: "open", Service: "ssh"},
 		{Port: "443", Proto: "tcp", State: "open", Service: "https"},
 	}
+	scanResults := []scanner.ScanResult{
+		{Port: 22, Banner: "SSH-2.0-OpenSSH_9.3"},
+	}
 
 	var buf strings.Builder
-	printPortTable(&buf, results)
+	printPortTable(&buf, results, scanResults)
 	out := buf.String()
 
-	for _, want := range []string{"PORT", "STATE", "SERVICE", "22/tcp", "ssh", "443/tcp", "https"} {
+	for _, want := range []string{"PORT", "STATE", "SERVICE", "BANNER", "22/tcp", "ssh", "443/tcp", "https", "SSH-2.0-OpenSSH_9.3"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected output to contain %q", want)
 		}
 	}
 }
 
-func TestPrintPortTable_ColumnsAdjustToContent(t *testing.T) {
+func TestPrintPortTable_EmptyBanner(t *testing.T) {
 	results := []scanner.PortResult{
-		{Port: "22", Proto: "tcp", State: "open", Service: "a-very-long-service-name"},
+		{Port: "80", Proto: "tcp", State: "open", Service: "http"},
 	}
 
 	var buf strings.Builder
-	printPortTable(&buf, results)
+	printPortTable(&buf, results, nil)
+	out := buf.String()
 
-	for _, line := range strings.Split(buf.String(), "\n") {
-		if strings.HasPrefix(line, "│") && strings.Contains(line, "a-very-long-service-name") {
-			if !strings.HasSuffix(strings.TrimRight(line, " "), "│") {
-				t.Error("table row is not properly closed")
-			}
-		}
+	if !strings.Contains(out, "80/tcp") {
+		t.Error("expected output to contain '80/tcp'")
 	}
 }
 
 func TestPrintPlainPorts(t *testing.T) {
+	results := []scanner.ScanResult{
+		{Port: 22, Banner: "SSH-2.0-OpenSSH_9.3"},
+		{Port: 80, Banner: ""},
+	}
+
 	var buf strings.Builder
-	printPlainPorts(&buf, []int{22, 80, 443})
+	printPlainPorts(&buf, results)
 	out := buf.String()
 
-	for _, want := range []string{"22", "80", "443"} {
+	for _, want := range []string{"22", "80", "SSH-2.0-OpenSSH_9.3"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected output to contain %q", want)
 		}

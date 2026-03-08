@@ -38,14 +38,19 @@ func main() {
 	start := time.Now()
 
 	found := scanner.Scan(ips, *startPort, *endPort, time.Duration(*timeout)*time.Millisecond, *concurrency)
-	sort.Ints(found)
+	sort.Slice(found, func(i, j int) bool { return found[i].Port < found[j].Port })
+
+	ports := make([]int, len(found))
+	for i, r := range found {
+		ports[i] = r.Port
+	}
 
 	if scanner.NmapAvailable() && len(found) > 0 {
-		results, err := scanner.RunNmap(*target, found)
+		results, err := scanner.RunNmap(*target, ports)
 		if err != nil {
 			fmt.Println("nmap error:", err)
 		}
-		printPortTable(os.Stdout, results)
+		printPortTable(os.Stdout, results, found)
 	} else {
 		printPlainPorts(os.Stdout, found)
 	}
