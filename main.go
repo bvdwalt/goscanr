@@ -20,8 +20,12 @@ func main() {
 	flag.Parse()
 
 	if err := validateFlags(*target, *startPort, *endPort, *timeout, *concurrency); err != nil {
-		fmt.Println("Flags parsing error:", err)
+		fmt.Println("Error:", err)
 		os.Exit(1)
+	}
+
+	if !scanner.NmapAvailable() {
+		fmt.Println("Warning: nmap not found in PATH, skipping service detection")
 	}
 
 	ips, err := net.LookupHost(*target)
@@ -30,16 +34,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Scanning %s (%v) from port %d to %d...\n", *target, ips, *startPort, *endPort)
+	printHeader(os.Stdout, *target, ips, *startPort, *endPort)
 	start := time.Now()
 
 	found := scanner.Scan(ips, *startPort, *endPort, time.Duration(*timeout)*time.Millisecond, *concurrency)
-
 	sort.Ints(found)
-	for _, port := range found {
-		fmt.Printf("Port %d is open\n", port)
+
+	if scanner.NmapAvailable() && len(found) > 0 {
+		results, err := scanner.RunNmap(*target, found)
+		if err != nil {
+			fmt.Println("nmap error:", err)
+		}
+		printPortTable(os.Stdout, results)
+	} else {
+		printPlainPorts(os.Stdout, found)
 	}
 
-	fmt.Println("Duration:", time.Since(start))
-	fmt.Println("Scan complete")
+	fmt.Printf("Done in %s\n", time.Since(start).Round(time.Millisecond))
 }
