@@ -19,7 +19,10 @@ func main() {
 	concurrency := flag.Int("concurrency", 1000, "Maximum number of concurrent port scans")
 	flag.Parse()
 
-	validateFlags(*target, *startPort, *endPort, *timeout, *concurrency)
+	if err := validateFlags(*target, *startPort, *endPort, *timeout, *concurrency); err != nil {
+		fmt.Println("Flags parsing error:", err)
+		os.Exit(1)
+	}
 
 	ips, err := net.LookupHost(*target)
 	if err != nil {
