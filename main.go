@@ -6,8 +6,9 @@ import (
 	"net"
 	"os"
 	"sort"
-	"sync"
 	"time"
+
+	"bvdwalt/goscanr/scanner"
 )
 
 func main() {
@@ -18,10 +19,7 @@ func main() {
 	concurrency := flag.Int("concurrency", 1000, "Maximum number of concurrent port scans")
 	flag.Parse()
 
-	if *target == "" {
-		fmt.Println("Usage: main -target <host> -start <startPort> -end <endPort>")
-		os.Exit(1)
-	}
+	validateFlags(*target, *startPort, *endPort, *timeout, *concurrency)
 
 	ips, err := net.LookupHost(*target)
 	if err != nil {
@@ -32,29 +30,7 @@ func main() {
 	fmt.Printf("Scanning %s (%v) from port %d to %d...\n", *target, ips, *startPort, *endPort)
 	start := time.Now()
 
-	openPorts := make(chan int)
-	sem := make(chan struct{}, *concurrency)
-	var wg sync.WaitGroup
-	for _, targetIP := range ips {
-		for port := *startPort; port <= *endPort; port++ {
-			wg.Add(1)
-			sem <- struct{}{}
-			go func(ip string, p int) {
-				defer func() { <-sem }()
-				scanPort(ip, p, *timeout, &wg, openPorts)
-			}(targetIP, port)
-		}
-	}
-
-	go func() {
-		wg.Wait()
-		close(openPorts)
-	}()
-
-	var found []int
-	for port := range openPorts {
-		found = append(found, port)
-	}
+	found := scanner.Scan(ips, *startPort, *endPort, time.Duration(*timeout)*time.Millisecond, *concurrency)
 
 	sort.Ints(found)
 	for _, port := range found {
@@ -63,16 +39,4 @@ func main() {
 
 	fmt.Println("Duration:", time.Since(start))
 	fmt.Println("Scan complete")
-}
-
-func scanPort(target string, port int, timeout int, wg *sync.WaitGroup, openPorts chan int) {
-	defer wg.Done()
-
-	address := net.JoinHostPort(target, fmt.Sprintf("%d", port))
-	conn, err := net.DialTimeout("tcp", address, time.Millisecond*time.Duration(timeout))
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-	openPorts <- port
 }
