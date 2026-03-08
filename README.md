@@ -9,6 +9,9 @@ A fast, concurrent TCP port scanner written in Go.
 ## Features
 
 - **Fast concurrent scanning**: Uses goroutines to scan multiple ports simultaneously
+- **Adaptive concurrency**: Automatically adjusts concurrency based on network conditions
+- **nmap integration**: Pipes open ports to nmap for service detection when available
+- **Banner grabbing**: Captures service banners on open ports
 - **Configurable port range**: Specify start and end ports for scanning
 - **Adjustable timeout**: Set connection timeout for port probes
 - **Simple CLI interface**: Easy-to-use command-line flags
@@ -50,6 +53,7 @@ go build -o goscanr main.go
 | `-start` | Starting port number | 1 |
 | `-end` | Ending port number | 1024 |
 | `-timeout` | Connection timeout in milliseconds | 300 |
+| `-concurrency` | Initial concurrent scans (adapts automatically) | 500 |
 
 ### Examples
 
@@ -76,21 +80,26 @@ go build -o goscanr main.go
 ## Sample Output
 
 ```
-Scanning example.com from port 1 to 1024...
-Port 22 is open
-Port 53 is open
-Port 80 is open
-Port 443 is open
-Scan complete.
+example.com (1.2.3.4) — ports 1-1024
+┌─────────┬───────┬─────────┬────────────────────────┐
+│ PORT    │ STATE │ SERVICE │ BANNER                 │
+├─────────┼───────┼─────────┼────────────────────────┤
+│ 22/tcp  │ open  │ ssh     │ SSH-2.0-OpenSSH_9.3    │
+│ 80/tcp  │ open  │ http    │                        │
+│ 443/tcp │ open  │ https   │                        │
+└─────────┴───────┴─────────┴────────────────────────┘
+Done in 365ms
 ```
 
 ## How It Works
 
-The scanner uses Go's `net.DialTimeout()` function to attempt TCP connections to each port in the specified range. Each port is scanned in a separate goroutine for maximum concurrency, with a `sync.WaitGroup` ensuring all scans complete before the program exits.
+Scanning happens in two phases:
+
+1. **Port discovery**: goscanr attempts TCP connections across the specified port range using goroutines. Ports are processed in batches and concurrency adapts automatically — increasing when the network is healthy, backing off when timeouts are detected.
+2. **Service detection**: Open ports are passed to nmap (if installed) for service and version identification. Results are displayed in a table with any banners captured during the initial connection.
 
 ## Performance Considerations
 
-- **Concurrency**: The scanner creates one goroutine per port, which provides excellent performance but may be resource-intensive for very large port ranges
 - **Timeout**: Lower timeout values increase scan speed but may miss slower-responding services
 - **Network limits**: Very aggressive scanning may trigger rate limiting or be flagged by intrusion detection systems
 
@@ -109,7 +118,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is open source. Please check the repository for license details.
+MIT — see [LICENSE](LICENSE) for details.
 
 ## Author
 
