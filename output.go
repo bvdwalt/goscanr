@@ -113,10 +113,16 @@ func printResults(w io.Writer, target string, found []scanner.ScanResult) {
 	printPortTable(w, portResults, found)
 }
 
-func printHeader(w io.Writer, target string, ips []string, startPort, endPort int) {
-	fmt.Fprintf(w, "%s%s%s (%s) — ports %s%d-%d%s\n",
+func printHeader(w io.Writer, target string, ips []string, top, startPort, endPort int) {
+	var portDesc string
+	if top > 0 {
+		portDesc = fmt.Sprintf("top %d", top)
+	} else {
+		portDesc = fmt.Sprintf("%d-%d", startPort, endPort)
+	}
+	fmt.Fprintf(w, "%s%s%s (%s) — ports %s%s%s\n",
 		colorBold, target, colorReset,
 		strings.Join(ips, ", "),
-		colorYellow, startPort, endPort, colorReset,
+		colorYellow, portDesc, colorReset,
 	)
 }

@@ -32,10 +32,10 @@ type scanOutcome struct {
 	timedOut bool
 }
 
-func Scan(ips []string, startPort, endPort int, timeout time.Duration, concurrency int) []ScanResult {
+func Scan(ips []string, ports []int, timeout time.Duration, concurrency int) []ScanResult {
 	var targets []portTarget
 	for _, ip := range ips {
-		for port := startPort; port <= endPort; port++ {
+		for _, port := range ports {
 			targets = append(targets, portTarget{ip, port})
 		}
 	}

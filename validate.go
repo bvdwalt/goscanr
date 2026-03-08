@@ -1,19 +1,30 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"fmt"
 
-func validateFlags(target string, startPort, endPort, timeout, concurrency int) error {
+	"bvdwalt/goscanr/scanner"
+)
+
+func validateFlags(target string, startPort, endPort, top, timeout, concurrency int) error {
 	if target == "" {
 		return errors.New("target is required")
 	}
-	if startPort < 1 || startPort > 65535 {
-		return errors.New("start port must be between 1 and 65535")
-	}
-	if endPort < 1 || endPort > 65535 {
-		return errors.New("end port must be between 1 and 65535")
-	}
-	if startPort > endPort {
-		return errors.New("start port must be less than or equal to end port")
+	if top > 0 {
+		if _, err := scanner.TopPorts(top); err != nil {
+			return fmt.Errorf("invalid -top value: %w", err)
+		}
+	} else {
+		if startPort < 1 || startPort > 65535 {
+			return errors.New("start port must be between 1 and 65535")
+		}
+		if endPort < 1 || endPort > 65535 {
+			return errors.New("end port must be between 1 and 65535")
+		}
+		if startPort > endPort {
+			return errors.New("start port must be less than or equal to end port")
+		}
 	}
 	if timeout < 1 {
 		return errors.New("timeout must be at least 1ms")

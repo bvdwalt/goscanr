@@ -44,7 +44,7 @@ func TestPrintPortTable_EmptyBanner(t *testing.T) {
 
 func TestPrintHeader(t *testing.T) {
 	var buf strings.Builder
-	printHeader(&buf, "example.com", []string{"1.2.3.4"}, 1, 1024)
+	printHeader(&buf, "example.com", []string{"1.2.3.4"}, 0, 1, 1024)
 	out := buf.String()
 
 	for _, want := range []string{"example.com", "1.2.3.4", "1-1024"} {
