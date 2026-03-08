@@ -10,6 +10,7 @@ import (
 
 type ScanResult struct {
 	Port   int
+	Proto  string
 	Banner string
 }
 
@@ -52,7 +53,7 @@ func scanPort(ip string, port int, timeout time.Duration, wg *sync.WaitGroup, re
 	defer conn.Close()
 
 	banner := grabBanner(conn)
-	results <- ScanResult{Port: port, Banner: banner}
+	results <- ScanResult{Port: port, Proto: "tcp", Banner: banner}
 }
 
 const bannerTimeout = 100 * time.Millisecond

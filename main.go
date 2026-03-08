@@ -45,15 +45,23 @@ func main() {
 		ports[i] = r.Port
 	}
 
+	var portResults []scanner.PortResult
 	if scanner.NmapAvailable() && len(found) > 0 {
-		results, err := scanner.RunNmap(*target, ports)
+		var err error
+		portResults, err = scanner.RunNmap(*target, ports)
 		if err != nil {
 			fmt.Println("nmap error:", err)
 		}
-		printPortTable(os.Stdout, results, found)
 	} else {
-		printPlainPorts(os.Stdout, found)
+		for _, r := range found {
+			portResults = append(portResults, scanner.PortResult{
+				Port:  fmt.Sprintf("%d", r.Port),
+				Proto: r.Proto,
+				State: "open",
+			})
+		}
 	}
+	printPortTable(os.Stdout, portResults, found)
 
 	fmt.Printf("Done in %s\n", time.Since(start).Round(time.Millisecond))
 }

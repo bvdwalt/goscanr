@@ -73,15 +73,6 @@ func printPortTable(w io.Writer, results []scanner.PortResult, scanResults []sca
 	fmt.Fprintln(w, sep("└", "┴", "┘"))
 }
 
-func printPlainPorts(w io.Writer, results []scanner.ScanResult) {
-	for _, r := range results {
-		if r.Banner != "" {
-			fmt.Fprintf(w, "%s%d%s is open  %s\n", colorCyan, r.Port, colorReset, r.Banner)
-		} else {
-			fmt.Fprintf(w, "%s%d%s is open\n", colorCyan, r.Port, colorReset)
-		}
-	}
-}
 
 func printHeader(w io.Writer, target string, ips []string, startPort, endPort int) {
 	fmt.Fprintf(w, "%s%s%s (%s) — ports %s%d-%d%s\n",

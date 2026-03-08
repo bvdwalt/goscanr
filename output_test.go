@@ -41,22 +41,6 @@ func TestPrintPortTable_EmptyBanner(t *testing.T) {
 	}
 }
 
-func TestPrintPlainPorts(t *testing.T) {
-	results := []scanner.ScanResult{
-		{Port: 22, Banner: "SSH-2.0-OpenSSH_9.3"},
-		{Port: 80, Banner: ""},
-	}
-
-	var buf strings.Builder
-	printPlainPorts(&buf, results)
-	out := buf.String()
-
-	for _, want := range []string{"22", "80", "SSH-2.0-OpenSSH_9.3"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("expected output to contain %q", want)
-		}
-	}
-}
 
 func TestPrintHeader(t *testing.T) {
 	var buf strings.Builder
