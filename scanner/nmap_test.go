@@ -22,6 +22,7 @@ func TestParseNmapXML(t *testing.T) {
 	xml := []byte(`<?xml version="1.0"?>
 <nmaprun>
   <host>
+    <address addr="192.168.1.1" addrtype="ipv4"/>
     <ports>
       <port protocol="tcp" portid="22">
         <state state="open"/>
@@ -44,8 +45,8 @@ func TestParseNmapXML(t *testing.T) {
 	}
 
 	expected := []PortResult{
-		{Port: "22", Proto: "tcp", State: "open", Service: "ssh"},
-		{Port: "80", Proto: "tcp", State: "open", Service: "http"},
+		{IP: "192.168.1.1", Port: "22", Proto: "tcp", State: "open", Service: "ssh"},
+		{IP: "192.168.1.1", Port: "80", Proto: "tcp", State: "open", Service: "http"},
 	}
 	for i, r := range results {
 		if r != expected[i] {

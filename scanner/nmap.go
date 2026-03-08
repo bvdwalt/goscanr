@@ -8,6 +8,7 @@ import (
 )
 
 type PortResult struct {
+	IP      string
 	Port    string
 	Proto   string
 	State   string
@@ -19,7 +20,12 @@ type nmapXML struct {
 }
 
 type nmapHost struct {
-	Ports []nmapPort `xml:"ports>port"`
+	Address nmapAddress `xml:"address"`
+	Ports   []nmapPort  `xml:"ports>port"`
+}
+
+type nmapAddress struct {
+	Addr string `xml:"addr,attr"`
 }
 
 type nmapPort struct {
@@ -60,6 +66,7 @@ func parseNmapXML(data []byte) ([]PortResult, error) {
 	for _, host := range result.Hosts {
 		for _, port := range host.Ports {
 			portResults = append(portResults, PortResult{
+				IP:      host.Address.Addr,
 				Port:    strconv.Itoa(port.PortID),
 				Proto:   port.Protocol,
 				State:   port.State.State,

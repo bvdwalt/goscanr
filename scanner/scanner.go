@@ -16,6 +16,7 @@ const (
 )
 
 type ScanResult struct {
+	IP     string
 	Port   int
 	Proto  string
 	Banner string
@@ -99,7 +100,7 @@ func scanPort(ip string, port int, timeout time.Duration, outcomes chan scanOutc
 	defer conn.Close()
 
 	banner := grabBanner(conn)
-	outcomes <- scanOutcome{result: &ScanResult{Port: port, Proto: "tcp", Banner: banner}}
+	outcomes <- scanOutcome{result: &ScanResult{IP: ip, Port: port, Proto: "tcp", Banner: banner}}
 }
 
 const bannerTimeout = 100 * time.Millisecond

@@ -3,9 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
 	"os"
-	"sort"
 	"time"
 
 	"bvdwalt/goscanr/scanner"
@@ -28,7 +26,7 @@ func main() {
 		fmt.Println("Warning: nmap not found in PATH, skipping service detection")
 	}
 
-	ips, err := net.LookupHost(*target)
+	ips, err := scanner.ResolveTarget(*target)
 	if err != nil {
 		fmt.Printf("Failed to resolve %s: %v\n", *target, err)
 		os.Exit(1)
@@ -38,30 +36,7 @@ func main() {
 	start := time.Now()
 
 	found := scanner.Scan(ips, *startPort, *endPort, time.Duration(*timeout)*time.Millisecond, *concurrency)
-	sort.Slice(found, func(i, j int) bool { return found[i].Port < found[j].Port })
-
-	ports := make([]int, len(found))
-	for i, r := range found {
-		ports[i] = r.Port
-	}
-
-	var portResults []scanner.PortResult
-	if scanner.NmapAvailable() && len(found) > 0 {
-		var err error
-		portResults, err = scanner.RunNmap(*target, ports)
-		if err != nil {
-			fmt.Println("nmap error:", err)
-		}
-	} else {
-		for _, r := range found {
-			portResults = append(portResults, scanner.PortResult{
-				Port:  fmt.Sprintf("%d", r.Port),
-				Proto: r.Proto,
-				State: "open",
-			})
-		}
-	}
-	printPortTable(os.Stdout, portResults, found)
+	printResults(os.Stdout, *target, found)
 
 	fmt.Printf("Done in %s\n", time.Since(start).Round(time.Millisecond))
 }

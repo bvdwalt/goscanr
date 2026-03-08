@@ -12,6 +12,7 @@ A fast, concurrent TCP port scanner written in Go.
 - **Adaptive concurrency**: Automatically adjusts concurrency based on network conditions
 - **nmap integration**: Pipes open ports to nmap for service detection when available
 - **Banner grabbing**: Captures service banners on open ports
+- **CIDR range support**: Scan entire subnets (e.g. `192.168.1.0/24`)
 - **Configurable port range**: Specify start and end ports for scanning
 - **Adjustable timeout**: Set connection timeout for port probes
 - **Simple CLI interface**: Easy-to-use command-line flags
@@ -49,7 +50,7 @@ go build -o goscanr main.go
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-target` | Target hostname or IP address (required) | - |
+| `-target` | Target hostname, IP address, or CIDR range (required) | - |
 | `-start` | Starting port number | 1 |
 | `-end` | Ending port number | 1024 |
 | `-timeout` | Connection timeout in milliseconds | 300 |
@@ -75,6 +76,11 @@ go build -o goscanr main.go
 #### Quick scan of well-known ports
 ```bash
 ./goscanr -target target.example.com -start 20 -end 1024 -timeout 200
+```
+
+#### Scan an entire subnet
+```bash
+./goscanr -target 192.168.1.0/24 -end 1024
 ```
 
 ## Sample Output
