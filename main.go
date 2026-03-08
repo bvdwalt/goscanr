@@ -16,7 +16,7 @@ func main() {
 	startPort := flag.Int("start", 1, "Start port")
 	endPort := flag.Int("end", 1024, "End port")
 	timeout := flag.Int("timeout", 300, "Timeout in milliseconds")
-	concurrency := flag.Int("concurrency", 1000, "Maximum number of concurrent port scans")
+	concurrency := flag.Int("concurrency", 500, "Initial number of concurrent port scans (adapts automatically)")
 	flag.Parse()
 
 	if err := validateFlags(*target, *startPort, *endPort, *timeout, *concurrency); err != nil {

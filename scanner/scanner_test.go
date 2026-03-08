@@ -14,8 +14,7 @@ func TestScan_FindsOpenPort(t *testing.T) {
 	defer ln.Close()
 
 	port := ln.Addr().(*net.TCPAddr).Port
-
-	found := Scan([]string{"127.0.0.1"}, port, port, 500*time.Millisecond, 1)
+	found := Scan([]string{"127.0.0.1"}, port, port, 500*time.Millisecond, 10)
 
 	if len(found) != 1 || found[0].Port != port {
 		t.Errorf("expected port %d, got %v", port, found)
@@ -23,7 +22,7 @@ func TestScan_FindsOpenPort(t *testing.T) {
 }
 
 func TestScan_NoOpenPorts(t *testing.T) {
-	found := Scan([]string{"127.0.0.1"}, 1, 1, 50*time.Millisecond, 1)
+	found := Scan([]string{"127.0.0.1"}, 1, 1, 50*time.Millisecond, 10)
 
 	if len(found) != 0 {
 		t.Errorf("expected no open ports, got %v", found)
@@ -75,7 +74,7 @@ func TestScan_GrabsBanner(t *testing.T) {
 	}()
 
 	port := ln.Addr().(*net.TCPAddr).Port
-	found := Scan([]string{"127.0.0.1"}, port, port, 500*time.Millisecond, 1)
+	found := Scan([]string{"127.0.0.1"}, port, port, 500*time.Millisecond, 10)
 
 	if len(found) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(found))
@@ -85,11 +84,30 @@ func TestScan_GrabsBanner(t *testing.T) {
 	}
 }
 
-func contains(results []ScanResult, port int) bool {
-	for _, r := range results {
-		if r.Port == port {
-			return true
-		}
+func TestAdjustConcurrency_ReducesOnHighTimeouts(t *testing.T) {
+	result := adjustConcurrency(1000, 150, 1000) // 15% timeout rate
+	if result >= 1000 {
+		t.Errorf("expected concurrency to decrease, got %d", result)
 	}
-	return false
+}
+
+func TestAdjustConcurrency_IncreasesOnLowTimeouts(t *testing.T) {
+	result := adjustConcurrency(1000, 10, 1000) // 1% timeout rate
+	if result <= 1000 {
+		t.Errorf("expected concurrency to increase, got %d", result)
+	}
+}
+
+func TestAdjustConcurrency_RespectsMinimum(t *testing.T) {
+	result := adjustConcurrency(minConcurrency, 1000, 1000) // 100% timeouts
+	if result < minConcurrency {
+		t.Errorf("expected concurrency to stay >= %d, got %d", minConcurrency, result)
+	}
+}
+
+func TestAdjustConcurrency_RespectsMaximum(t *testing.T) {
+	result := adjustConcurrency(maxConcurrency, 0, 1000) // 0% timeouts
+	if result > maxConcurrency {
+		t.Errorf("expected concurrency to stay <= %d, got %d", maxConcurrency, result)
+	}
 }
