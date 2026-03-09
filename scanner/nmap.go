@@ -48,12 +48,13 @@ func NmapAvailable() bool {
 	return err == nil
 }
 
-func buildNmapArgs(target string, ports []int) []string {
+func buildNmapArgs(ips []string, ports []int) []string {
 	portList := make([]string, len(ports))
 	for i, p := range ports {
 		portList[i] = strconv.Itoa(p)
 	}
-	return []string{"-oX", "-", "-p", strings.Join(portList, ","), target}
+	args := []string{"-oX", "-", "-p", strings.Join(portList, ",")}
+	return append(args, ips...)
 }
 
 func parseNmapXML(data []byte) ([]PortResult, error) {
@@ -65,6 +66,9 @@ func parseNmapXML(data []byte) ([]PortResult, error) {
 	var portResults []PortResult
 	for _, host := range result.Hosts {
 		for _, port := range host.Ports {
+			if port.State.State != "open" {
+				continue
+			}
 			portResults = append(portResults, PortResult{
 				IP:      host.Address.Addr,
 				Port:    strconv.Itoa(port.PortID),
@@ -77,8 +81,8 @@ func parseNmapXML(data []byte) ([]PortResult, error) {
 	return portResults, nil
 }
 
-func RunNmap(target string, ports []int) ([]PortResult, error) {
-	args := buildNmapArgs(target, ports)
+func RunNmap(ips []string, ports []int) ([]PortResult, error) {
+	args := buildNmapArgs(ips, ports)
 	cmd := exec.Command("nmap", args...)
 
 	out, err := cmd.Output()

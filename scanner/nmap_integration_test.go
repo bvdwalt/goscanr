@@ -22,7 +22,7 @@ func TestRunNmap(t *testing.T) {
 	defer ln.Close()
 	port := ln.Addr().(*net.TCPAddr).Port
 
-	results, err := RunNmap("127.0.0.1", []int{port})
+	results, err := RunNmap([]string{"127.0.0.1"}, []int{port})
 	if err != nil {
 		t.Fatalf("RunNmap returned error: %v", err)
 	}

@@ -35,6 +35,9 @@ func printPortTable(w io.Writer, results []scanner.PortResult, scanResults []sca
 		if width := len(r.Port) + 1 + len(r.Proto); width > portW {
 			portW = width
 		}
+		if width := len(r.State); width > stateW {
+			stateW = width
+		}
 		if width := len(r.Service); width > serviceW {
 			serviceW = width
 		}
@@ -95,8 +98,9 @@ func printResults(w io.Writer, target string, found []scanner.ScanResult) {
 
 	var portResults []scanner.PortResult
 	if scanner.NmapAvailable() && len(found) > 0 {
+		uniqueIPs := uniqueIPs(found)
 		var err error
-		portResults, err = scanner.RunNmap(target, ports)
+		portResults, err = scanner.RunNmap(uniqueIPs, ports)
 		if err != nil {
 			fmt.Fprintf(w, "nmap error: %v\n", err)
 		}
@@ -111,6 +115,18 @@ func printResults(w io.Writer, target string, found []scanner.ScanResult) {
 		}
 	}
 	printPortTable(w, portResults, found)
+}
+
+func uniqueIPs(results []scanner.ScanResult) []string {
+	seen := make(map[string]bool)
+	var ips []string
+	for _, r := range results {
+		if !seen[r.IP] {
+			seen[r.IP] = true
+			ips = append(ips, r.IP)
+		}
+	}
+	return ips
 }
 
 func printHeader(w io.Writer, target string, ips []string, top, startPort, endPort int) {

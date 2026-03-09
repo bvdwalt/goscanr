@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 const (
@@ -117,5 +118,11 @@ func grabBanner(conn net.Conn) string {
 	conn.SetReadDeadline(time.Now().Add(bannerTimeout))
 	buf := make([]byte, 1024)
 	n, _ := conn.Read(buf)
-	return strings.TrimSpace(string(buf[:n]))
+
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
+		if r != unicode.ReplacementChar && unicode.IsPrint(r) {
+			return r
+		}
+		return -1
+	}, string(buf[:n])))
 }
