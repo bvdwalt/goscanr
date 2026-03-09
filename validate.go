@@ -7,7 +7,7 @@ import (
 	"bvdwalt/goscanr/scanner"
 )
 
-func validateFlags(target string, startPort, endPort, top, timeout, concurrency int) error {
+func validateFlags(target string, startPort, endPort, top, timeout, concurrency int, format string) error {
 	if target == "" {
 		return errors.New("target is required")
 	}
@@ -31,6 +31,9 @@ func validateFlags(target string, startPort, endPort, top, timeout, concurrency 
 	}
 	if concurrency < 1 {
 		return errors.New("concurrency must be at least 1")
+	}
+	if format != "text" && format != "json" {
+		return fmt.Errorf("invalid format %q: must be text or json", format)
 	}
 	return nil
 }

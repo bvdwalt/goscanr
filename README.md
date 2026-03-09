@@ -13,6 +13,9 @@ A fast, concurrent TCP port scanner written in Go.
 - **nmap integration**: Pipes open ports to nmap for service detection when available
 - **Banner grabbing**: Captures service banners on open ports
 - **CIDR range support**: Scan entire subnets (e.g. `192.168.1.0/24`)
+- **Top-N ports**: Scan the most commonly open ports without specifying a range
+- **Multiple output formats**: `text` (default) or `json` output
+- **Output to file**: Save results to a file (colour codes stripped automatically)
 - **Configurable port range**: Specify start and end ports for scanning
 - **Adjustable timeout**: Set connection timeout for port probes
 - **Simple CLI interface**: Easy-to-use command-line flags
@@ -53,8 +56,11 @@ go build -o goscanr main.go
 | `-target` | Target hostname, IP address, or CIDR range (required) | - |
 | `-start` | Starting port number | 1 |
 | `-end` | Ending port number | 1024 |
+| `-top` | Scan the top N most commonly open ports | - |
 | `-timeout` | Connection timeout in milliseconds | 300 |
 | `-concurrency` | Initial concurrent scans (adapts automatically) | 500 |
+| `-format` | Output format: `text` or `json` | `text` |
+| `-output` | Save results to a file (e.g. `results.txt` or `results.json`) | - |
 
 ### Examples
 
@@ -81,6 +87,26 @@ go build -o goscanr main.go
 #### Scan an entire subnet
 ```bash
 ./goscanr -target 192.168.1.0/24 -end 1024
+```
+
+#### Scan the top 100 most common ports
+```bash
+./goscanr -target example.com -top 100
+```
+
+#### Save results to a file
+```bash
+./goscanr -target example.com -top 100 -output results.txt
+```
+
+#### Output as JSON
+```bash
+./goscanr -target example.com -top 100 -format json
+```
+
+#### Save JSON results to a file
+```bash
+./goscanr -target example.com -top 100 -format json -output results.json
 ```
 
 ## Sample Output

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"bvdwalt/goscanr/scanner"
 )
@@ -17,6 +19,21 @@ const (
 	colorYellow = "\033[33m"
 )
 
+type jsonResult struct {
+	IP      string `json:"ip"`
+	Port    string `json:"port"`
+	Proto   string `json:"proto"`
+	State   string `json:"state"`
+	Service string `json:"service"`
+	Banner  string `json:"banner,omitempty"`
+}
+
+type jsonOutput struct {
+	Target   string       `json:"target"`
+	Duration string       `json:"duration"`
+	Results  []jsonResult `json:"results"`
+}
+
 func bannerFor(ip string, port int, scanResults []scanner.ScanResult) string {
 	for _, r := range scanResults {
 		if r.IP == ip && r.Port == port && r.Banner != "" {
@@ -24,6 +41,71 @@ func bannerFor(ip string, port int, scanResults []scanner.ScanResult) string {
 		}
 	}
 	return ""
+}
+
+func prepareResults(target string, found []scanner.ScanResult) ([]scanner.PortResult, []scanner.ScanResult) {
+	sort.Slice(found, func(i, j int) bool {
+		if found[i].IP != found[j].IP {
+			return found[i].IP < found[j].IP
+		}
+		return found[i].Port < found[j].Port
+	})
+
+	ports := make([]int, len(found))
+	for i, r := range found {
+		ports[i] = r.Port
+	}
+
+	var portResults []scanner.PortResult
+	if scanner.NmapAvailable() && len(found) > 0 {
+		var err error
+		portResults, err = scanner.RunNmap(uniqueIPs(found), ports)
+		if err != nil {
+			fmt.Printf("nmap error: %v\n", err)
+		}
+	} else {
+		for _, r := range found {
+			portResults = append(portResults, scanner.PortResult{
+				IP:    r.IP,
+				Port:  fmt.Sprintf("%d", r.Port),
+				Proto: r.Proto,
+				State: "open",
+			})
+		}
+	}
+	return portResults, found
+}
+
+func printResults(w io.Writer, target string, found []scanner.ScanResult, format string, duration time.Duration) {
+	portResults, found := prepareResults(target, found)
+	switch format {
+	case "json":
+		printResultsJSON(w, target, portResults, found, duration)
+	default:
+		printPortTable(w, portResults, found)
+	}
+}
+
+func printResultsJSON(w io.Writer, target string, portResults []scanner.PortResult, scanResults []scanner.ScanResult, duration time.Duration) {
+	out := jsonOutput{
+		Target:   target,
+		Duration: duration.Round(time.Millisecond).String(),
+	}
+	for _, r := range portResults {
+		port := 0
+		fmt.Sscanf(r.Port, "%d", &port)
+		out.Results = append(out.Results, jsonResult{
+			IP:      r.IP,
+			Port:    r.Port,
+			Proto:   r.Proto,
+			State:   r.State,
+			Service: r.Service,
+			Banner:  bannerFor(r.IP, port, scanResults),
+		})
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.Encode(out)
 }
 
 func printPortTable(w io.Writer, results []scanner.PortResult, scanResults []scanner.ScanResult) {
@@ -81,40 +163,6 @@ func printPortTable(w io.Writer, results []scanner.PortResult, scanResults []sca
 	}
 
 	fmt.Fprintln(w, sep("└", "┴", "┘"))
-}
-
-func printResults(w io.Writer, target string, found []scanner.ScanResult) {
-	sort.Slice(found, func(i, j int) bool {
-		if found[i].IP != found[j].IP {
-			return found[i].IP < found[j].IP
-		}
-		return found[i].Port < found[j].Port
-	})
-
-	ports := make([]int, len(found))
-	for i, r := range found {
-		ports[i] = r.Port
-	}
-
-	var portResults []scanner.PortResult
-	if scanner.NmapAvailable() && len(found) > 0 {
-		uniqueIPs := uniqueIPs(found)
-		var err error
-		portResults, err = scanner.RunNmap(uniqueIPs, ports)
-		if err != nil {
-			fmt.Fprintf(w, "nmap error: %v\n", err)
-		}
-	} else {
-		for _, r := range found {
-			portResults = append(portResults, scanner.PortResult{
-				IP:    r.IP,
-				Port:  fmt.Sprintf("%d", r.Port),
-				Proto: r.Proto,
-				State: "open",
-			})
-		}
-	}
-	printPortTable(w, portResults, found)
 }
 
 func uniqueIPs(results []scanner.ScanResult) []string {

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -23,9 +24,11 @@ func main() {
 	top := flag.Int("top", 0, "Scan the top N most common ports (overrides -start and -end)")
 	timeout := flag.Int("timeout", 300, "Timeout in milliseconds")
 	concurrency := flag.Int("concurrency", 500, "Initial number of concurrent port scans (adapts automatically)")
+	output := flag.String("output", "", "Save results to a file")
+	format := flag.String("format", "text", "Output format: text or json")
 	flag.Parse()
 
-	if err := validateFlags(*target, *startPort, *endPort, *top, *timeout, *concurrency); err != nil {
+	if err := validateFlags(*target, *startPort, *endPort, *top, *timeout, *concurrency, *format); err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
@@ -40,12 +43,27 @@ func main() {
 		os.Exit(1)
 	}
 
+	out := io.Writer(os.Stdout)
+	if *output != "" {
+		f, err := os.Create(*output)
+		if err != nil {
+			fmt.Println("Error creating output file:", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		out = io.MultiWriter(out, ansiStripper{f})
+	}
+
 	ports, err := resolvePorts(*top, *startPort, *endPort)
 	if err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
-	printHeader(os.Stdout, *target, ips, *top, *startPort, *endPort)
+	if *format == "json" {
+		printHeader(os.Stderr, *target, ips, *top, *startPort, *endPort)
+	} else {
+		printHeader(out, *target, ips, *top, *startPort, *endPort)
+	}
 
 	start := time.Now()
 	found := scanner.Scan(ips, ports, time.Duration(*timeout)*time.Millisecond, *concurrency, func(done, total int) {
@@ -54,7 +72,12 @@ func main() {
 			fmt.Fprintln(os.Stderr)
 		}
 	})
-	printResults(os.Stdout, *target, found)
+	duration := time.Since(start)
+	printResults(out, *target, found, *format, duration)
 
-	fmt.Printf("Done in %s\n", time.Since(start).Round(time.Millisecond))
+	if *format == "json" {
+		fmt.Fprintf(os.Stderr, "Done in %s\n", duration.Round(time.Millisecond))
+	} else {
+		fmt.Fprintf(out, "Done in %s\n", duration.Round(time.Millisecond))
+	}
 }
