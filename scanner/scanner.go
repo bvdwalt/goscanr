@@ -32,7 +32,7 @@ type scanOutcome struct {
 	timedOut bool
 }
 
-func Scan(ips []string, ports []int, timeout time.Duration, concurrency int) []ScanResult {
+func Scan(ips []string, ports []int, timeout time.Duration, concurrency int, onProgress func(done, total int)) []ScanResult {
 	var targets []portTarget
 	for _, ip := range ips {
 		for _, port := range ports {
@@ -40,11 +40,14 @@ func Scan(ips []string, ports []int, timeout time.Duration, concurrency int) []S
 		}
 	}
 
+	total := len(targets)
+	done := 0
+
 	var found []ScanResult
-	for i := 0; i < len(targets); {
+	for i := 0; i < total; {
 		end := i + concurrency
-		if end > len(targets) {
-			end = len(targets)
+		if end > total {
+			end = total
 		}
 		batch := targets[i:end]
 		i = end
@@ -68,6 +71,11 @@ func Scan(ips []string, ports []int, timeout time.Duration, concurrency int) []S
 			} else if o.result != nil {
 				found = append(found, *o.result)
 			}
+		}
+
+		done += len(batch)
+		if onProgress != nil {
+			onProgress(done, total)
 		}
 
 		concurrency = adjustConcurrency(concurrency, timeouts, len(batch))

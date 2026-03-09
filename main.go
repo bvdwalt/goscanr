@@ -48,7 +48,12 @@ func main() {
 	printHeader(os.Stdout, *target, ips, *top, *startPort, *endPort)
 
 	start := time.Now()
-	found := scanner.Scan(ips, ports, time.Duration(*timeout)*time.Millisecond, *concurrency)
+	found := scanner.Scan(ips, ports, time.Duration(*timeout)*time.Millisecond, *concurrency, func(done, total int) {
+		fmt.Fprintf(os.Stderr, "\rScanning... %d/%d (%.0f%%)", done, total, float64(done)/float64(total)*100)
+		if done == total {
+			fmt.Fprintln(os.Stderr)
+		}
+	})
 	printResults(os.Stdout, *target, found)
 
 	fmt.Printf("Done in %s\n", time.Since(start).Round(time.Millisecond))

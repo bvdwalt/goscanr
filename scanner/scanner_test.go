@@ -14,7 +14,7 @@ func TestScan_FindsOpenPort(t *testing.T) {
 	defer ln.Close()
 
 	port := ln.Addr().(*net.TCPAddr).Port
-	found := Scan([]string{"127.0.0.1"}, []int{port}, 500*time.Millisecond, 10)
+	found := Scan([]string{"127.0.0.1"}, []int{port}, 500*time.Millisecond, 10, nil)
 
 	if len(found) != 1 || found[0].Port != port {
 		t.Errorf("expected port %d, got %v", port, found)
@@ -22,7 +22,7 @@ func TestScan_FindsOpenPort(t *testing.T) {
 }
 
 func TestScan_NoOpenPorts(t *testing.T) {
-	found := Scan([]string{"127.0.0.1"}, []int{1}, 50*time.Millisecond, 10)
+	found := Scan([]string{"127.0.0.1"}, []int{1}, 50*time.Millisecond, 10, nil)
 
 	if len(found) != 0 {
 		t.Errorf("expected no open ports, got %v", found)
@@ -40,7 +40,7 @@ func TestScan_ReturnsMultipleOpenPorts(t *testing.T) {
 		ports = append(ports, ln.Addr().(*net.TCPAddr).Port)
 	}
 
-	found := Scan([]string{"127.0.0.1"}, ports, 500*time.Millisecond, 10)
+	found := Scan([]string{"127.0.0.1"}, ports, 500*time.Millisecond, 10, nil)
 
 	if len(found) < 3 {
 		t.Errorf("expected at least 3 open ports, got %v", found)
@@ -64,13 +64,32 @@ func TestScan_GrabsBanner(t *testing.T) {
 	}()
 
 	port := ln.Addr().(*net.TCPAddr).Port
-	found := Scan([]string{"127.0.0.1"}, []int{port}, 500*time.Millisecond, 10)
+	found := Scan([]string{"127.0.0.1"}, []int{port}, 500*time.Millisecond, 10, nil)
 
 	if len(found) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(found))
 	}
 	if found[0].Banner != "Hello from test server" {
 		t.Errorf("expected banner %q, got %q", "Hello from test server", found[0].Banner)
+	}
+}
+
+func TestScan_CallsProgressCallback(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start listener: %v", err)
+	}
+	defer ln.Close()
+
+	port := ln.Addr().(*net.TCPAddr).Port
+	var lastDone, lastTotal int
+	Scan([]string{"127.0.0.1"}, []int{port}, 500*time.Millisecond, 10, func(done, total int) {
+		lastDone = done
+		lastTotal = total
+	})
+
+	if lastDone != lastTotal {
+		t.Errorf("expected done == total at end, got %d/%d", lastDone, lastTotal)
 	}
 }
 

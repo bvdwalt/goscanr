@@ -120,9 +120,17 @@ func printHeader(w io.Writer, target string, ips []string, top, startPort, endPo
 	} else {
 		portDesc = fmt.Sprintf("%d-%d", startPort, endPort)
 	}
+
+	var ipDesc string
+	if len(ips) > 4 {
+		ipDesc = fmt.Sprintf("%s ... %s (%d hosts)", ips[0], ips[len(ips)-1], len(ips))
+	} else {
+		ipDesc = strings.Join(ips, ", ")
+	}
+
 	fmt.Fprintf(w, "%s%s%s (%s) — ports %s%s%s\n",
 		colorBold, target, colorReset,
-		strings.Join(ips, ", "),
+		ipDesc,
 		colorYellow, portDesc, colorReset,
 	)
 }
